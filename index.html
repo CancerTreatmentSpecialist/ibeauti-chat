@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#EED5D8" />
+  <title>iBeauti Advisor</title>
+  <meta name="description" content="Ask iBeauti — beauty and skincare answers plus local price and in-stock comparisons by ZIP code." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@600;700&family=Red+Hat+Text:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script crossorigin="anonymous" src="https://cdn.botframework.com/botframework-webchat/latest/webchat.js"></script>
+
+  <style>
+    /* ===== iBeauti theme (matched to app screens) ===== */
+    :root {
+      --mauve: #A65E66;        /* headline / brand text */
+      --mauve-dark: #8A4A52;   /* hover, links */
+      --blush: #E8C8CC;        /* primary buttons */
+      --blush-soft: #F6ECED;   /* bot bubble */
+      --blush-top: #EED5D8;    /* header gradient top */
+      --sage: #5D6E5B;         /* nav / accent green */
+      --ink: #2B2A2C;
+      --muted: #6B6468;
+      --line: #EADCDE;
+      --bg: #FFFFFF;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+      font-family: 'Red Hat Text', system-ui, -apple-system, sans-serif; }
+    body { display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; }
+
+    /* ===== Header ===== */
+    header {
+      flex: 0 0 auto;
+      padding: calc(var(--safe-top) + 12px) 16px 10px;
+      background: linear-gradient(180deg, var(--blush-top) 0%, #F7ECEE 70%, var(--bg) 100%);
+    }
+    .topbar { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 4px;
+      background: none; border: 0; padding: 6px 8px 6px 0; cursor: pointer;
+      color: var(--ink); font: 600 16px 'Red Hat Text', sans-serif;
+    }
+    .back-btn svg { width: 22px; height: 22px; }
+    .back-btn:active { opacity: .6; }
+    .info-btn {
+      margin-left: auto; width: 36px; height: 36px; border-radius: 50%;
+      border: 1.5px solid var(--mauve); background: rgba(255,255,255,.6);
+      color: var(--mauve); font: 700 16px 'Exo 2', sans-serif; cursor: pointer;
+    }
+    h1 {
+      margin: 6px 0 0; font: 700 34px/1.05 'Exo 2', sans-serif; color: var(--mauve);
+      letter-spacing: -.5px;
+    }
+    .subtitle { margin: 4px 0 0; font-size: 15px; color: var(--muted); }
+
+    /* ===== ZIP bar ===== */
+    .zip-bar {
+      display: flex; align-items: center; gap: 8px; margin-top: 12px;
+      background: #fff; border: 1px solid var(--line); border-radius: 999px;
+      padding: 4px 4px 4px 14px;
+    }
+    .zip-bar svg { width: 18px; height: 18px; flex: 0 0 auto; color: var(--mauve); }
+    .zip-bar label { font-size: 14px; color: var(--muted); white-space: nowrap; }
+    .zip-bar input {
+      flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+      font: 600 16px 'Red Hat Text', sans-serif; color: var(--ink); letter-spacing: 1px;
+    }
+    .zip-bar button {
+      border: 0; border-radius: 999px; padding: 9px 16px; cursor: pointer;
+      background: var(--blush); color: var(--ink); font: 700 14px 'Exo 2', sans-serif; letter-spacing: .5px;
+    }
+    .zip-bar button:active { background: var(--mauve); color: #fff; }
+
+    /* ===== Starter chips ===== */
+    .chips {
+      display: flex; gap: 8px; overflow-x: auto; padding: 12px 0 4px;
+      scrollbar-width: none; -webkit-overflow-scrolling: touch;
+    }
+    .chips::-webkit-scrollbar { display: none; }
+    .chip {
+      flex: 0 0 auto; border: 1.5px solid var(--mauve); background: #fff; color: var(--mauve);
+      border-radius: 999px; padding: 8px 14px; font: 600 14px 'Red Hat Text', sans-serif; cursor: pointer;
+    }
+    .chip:active { background: var(--mauve); color: #fff; }
+
+    /* ===== Chat ===== */
+    #webchat { flex: 1 1 auto; min-height: 0; position: relative; }
+    #webchat > div { height: 100%; }
+    #webchat a { color: var(--mauve-dark); font-weight: 600; }
+    #webchat .webchat__send-box { padding-bottom: var(--safe-bottom); }
+    #webchat .webchat__bubble__content { font-size: 15.5px; line-height: 1.45; }
+
+    .loading {
+      position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center;
+      justify-content: center; gap: 12px; color: var(--muted); font-size: 15px;
+    }
+    .dots span { display: inline-block; width: 9px; height: 9px; margin: 0 3px; border-radius: 50%;
+      background: var(--mauve); animation: bounce 1.2s infinite ease-in-out; }
+    .dots span:nth-child(2) { animation-delay: .15s; } .dots span:nth-child(3) { animation-delay: .3s; }
+    @keyframes bounce { 0%,80%,100% { transform: scale(.5); opacity: .4 } 40% { transform: scale(1); opacity: 1 } }
+
+    /* Fallback iframe (used only if the token endpoint can't be reached) */
+    .iframe-clip { position: absolute; inset: 0; overflow: hidden; }
+    .iframe-clip iframe { position: absolute; left: 0; top: -52px; width: 100%; height: calc(100% + 52px); border: 0; }
+
+    footer {
+      flex: 0 0 auto; text-align: center; font-size: 11.5px; color: var(--muted);
+      padding: 6px 16px calc(var(--safe-bottom) + 6px); border-top: 1px solid var(--line); background: #fff;
+    }
+    footer button { background: none; border: 0; color: var(--mauve); text-decoration: underline; font: inherit; cursor: pointer; padding: 0; }
+
+    /* ===== Privacy / disclaimer sheet ===== */
+    .overlay {
+      position: fixed; inset: 0; z-index: 50; display: none; align-items: flex-end; justify-content: center;
+      background: rgba(43,42,44,.45);
+    }
+    .overlay.open { display: flex; }
+    .sheet {
+      width: 100%; max-width: 560px; max-height: 88vh; overflow-y: auto; background: #fff;
+      border-radius: 24px 24px 0 0; padding: 24px 22px calc(var(--safe-bottom) + 22px);
+    }
+    .sheet h2 { margin: 0 0 10px; font: 700 24px 'Exo 2', sans-serif; color: var(--mauve); }
+    .sheet p, .sheet li { font-size: 15px; line-height: 1.5; color: var(--ink); }
+    .sheet ul { padding-left: 20px; margin: 8px 0 16px; }
+    .sheet li { margin-bottom: 6px; }
+    .primary-btn {
+      width: 100%; border: 0; border-radius: 999px; padding: 16px; cursor: pointer;
+      background: var(--blush); color: var(--ink); font: 700 17px 'Exo 2', sans-serif; letter-spacing: 1px;
+    }
+    .primary-btn:active { background: var(--mauve); color: #fff; }
+
+    /* Embedded mode (?embed=1): FlutterFlow supplies its own app bar */
+    body.embed .back-btn { visibility: hidden; }
+    body.embed h1 { font-size: 28px; }
+
+    @media (min-width: 720px) {
+      header, .chips { padding-left: max(16px, calc((100vw - 760px) / 2)); padding-right: max(16px, calc((100vw - 760px) / 2)); }
+      #webchat { max-width: 760px; width: 100%; margin: 0 auto; }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="topbar">
+      <button class="back-btn" id="backBtn" aria-label="Go back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+        <span id="backLabel">Back</span>
+      </button>
+      <button class="info-btn" id="infoBtn" aria-label="About and privacy">i</button>
+    </div>
+    <h1>Ask iBeauti</h1>
+    <p class="subtitle">Beauty answers and local price checks, your way.</p>
+
+    <form class="zip-bar" id="zipForm" autocomplete="off">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+      <label for="zipInput">Shopping near</label>
+      <input id="zipInput" inputmode="numeric" pattern="[0-9]{5}" maxlength="5" placeholder="ZIP code" aria-label="ZIP code" />
+      <button type="submit" id="zipBtn">SET</button>
+    </form>
+
+    <div class="chips" id="chips">
+      <button class="chip" data-q="Compare prices and in-stock availability near me for a product I'm shopping for.">Compare prices near me</button>
+      <button class="chip" data-q="What's the best sunscreen for my skin type, and where can I buy it near me?">Best sunscreen for me</button>
+      <button class="chip" data-q="Help me find my foundation shade and undertone.">Find my shade</button>
+      <button class="chip" data-q="Help me build a simple morning skincare routine.">Morning skin routine</button>
+      <button class="chip" data-q="Suggest affordable drugstore dupes for a high-end product.">Drugstore dupes</button>
+      <button class="chip" data-q="Can you explain what an ingredient in my product does?">Ingredient check</button>
+    </div>
+  </header>
+
+  <main id="webchat" role="main">
+    <div class="loading" id="loading">
+      <div class="dots"><span></span><span></span><span></span></div>
+      Connecting to your iBeauti advisor…
+    </div>
+  </main>
+
+  <footer>
+    AI-generated answers. Prices and stock change — confirm with the store. ·
+    <button id="footerInfo">Privacy &amp; disclaimer</button>
+  </footer>
+
+  <!-- Privacy / disclaimer sheet (shown on first visit; required for App Store review) -->
+  <div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+    <div class="sheet">
+      <h2 id="sheetTitle">Before you chat</h2>
+      <p>The iBeauti Advisor is an AI assistant for beauty, skincare and cosmetic questions, and for comparing prices and availability near you.</p>
+      <ul>
+        <li><strong>Prices and inventory change often.</strong> Always confirm with the retailer before you go.</li>
+        <li><strong>Not medical advice.</strong> For rashes, allergic reactions, persistent acne or any skin concern, see a dermatologist or healthcare provider.</li>
+        <li><strong>Patch test new products</strong>, especially if you have sensitive skin or known allergies.</li>
+        <li><strong>Protect your privacy.</strong> Don't share passwords, payment details or other sensitive personal information in the chat. A ZIP code is all the advisor needs to shop locally.</li>
+        <li>Conversations are processed by Microsoft Copilot Studio to generate responses.</li>
+      </ul>
+      <button class="primary-btn" id="agreeBtn">I UNDERSTAND →</button>
+    </div>
+  </div>
+
+  <script>
+    /* =====================================================================
+       CONFIG — paste the Token Endpoint from Copilot Studio:
+       Channels → Mobile app (or Web app) → Token Endpoint → Copy
+       ===================================================================== */
+    const TOKEN_ENDPOINT =
+      'https://default55392b7f41f9468a8aaec256bc68af.e5.environment.api.powerplatform.com/powervirtualagents/botsbyschema/cr21a_iBeautiPersonalCareAdvisor/directline/token?api-version=2022-03-01-preview';
+
+    // Used only if the token endpoint fails (default Copilot Studio web chat)
+    const FALLBACK_IFRAME =
+      'https://copilotstudio.microsoft.com/environments/Default-55392b7f-41f9-468a-8aae-c256bc68afe5/bots/cr21a_iBeautiPersonalCareAdvisor/webchat?__version__=2&enableFileAttachment=true';
+
+    // Where "Back" goes when there's no ?back= parameter and no browser history
+    const DEFAULT_BACK_URL = './';
+
+    /* ===== Safe storage ===== */
+    const store_ = {
+      get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } },
+      set(k, v) { try { localStorage.setItem(k, v); } catch (e) {} }
+    };
+
+    /* ===== Back navigation =====
+       ?back=<url>     → go to that page (e.g. iBeauti home on the web)
+       ?backLabel=Home → change the button text
+       ?embed=1        → hide the HTML back arrow (FlutterFlow app bar handles it) */
+    const params = new URLSearchParams(location.search);
+    const backUrl = params.get('back');
+    if (params.get('embed') === '1') document.body.classList.add('embed');
+    if (params.get('backLabel')) document.getElementById('backLabel').textContent = params.get('backLabel');
+
+    document.getElementById('backBtn').addEventListener('click', () => {
+      if (backUrl) { location.href = backUrl; return; }
+      const sameSiteReferrer = document.referrer && new URL(document.referrer).origin === location.origin;
+      if (history.length > 1 && (sameSiteReferrer || document.referrer)) { history.back(); return; }
+      location.href = DEFAULT_BACK_URL;
+    });
+
+    /* ===== Disclaimer sheet ===== */
+    const overlay = document.getElementById('overlay');
+    const openSheet = () => overlay.classList.add('open');
+    document.getElementById('infoBtn').onclick = openSheet;
+    document.getElementById('footerInfo').onclick = openSheet;
+    document.getElementById('agreeBtn').onclick = () => {
+      store_.set('ibeautiAcceptedAIPrivacy', 'true');
+      overlay.classList.remove('open');
+    };
+    if (store_.get('ibeautiAcceptedAIPrivacy') !== 'true') openSheet();
+
+    /* ===== ZIP code ===== */
+    const zipInput = document.getElementById('zipInput');
+    let zip = store_.get('ibeautiZip') || '';
+    if (zip) zipInput.value = zip;
+
+    let chatStore = null;   // set once Web Chat loads
+    const pending = [];     // messages queued before connection
+
+    function send(text) {
+      if (chatStore) chatStore.dispatch({ type: 'WEB_CHAT/SEND_MESSAGE', payload: { text } });
+      else pending.push(text);
+    }
+
+    document.getElementById('zipForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = zipInput.value.trim();
+      if (!/^\d{5}$/.test(v)) { zipInput.focus(); zipInput.select(); return; }
+      zip = v; store_.set('ibeautiZip', v); zipInput.blur();
+      send(`My ZIP code is ${v}. Please use it when comparing prices and in-stock availability near me.`);
+    });
+
+    /* ===== Starter chips ===== */
+    document.querySelectorAll('.chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        let q = chip.dataset.q;
+        if (zip && /near me/i.test(q)) q += ` My ZIP code is ${zip}.`;
+        send(q);
+      });
+    });
+
+    /* ===== Web Chat theme ===== */
+    const styleOptions = {
+      accent: '#A65E66',
+      backgroundColor: '#FFFFFF',
+      primaryFont: "'Red Hat Text', system-ui, -apple-system, sans-serif",
+      rootHeight: '100%',
+      rootWidth: '100%',
+
+      // Bot (answer) bubbles
+      bubbleBackground: '#F6ECED',
+      bubbleBorderColor: '#EADCDE',
+      bubbleBorderRadius: 18,
+      bubbleBorderWidth: 1,
+      bubbleTextColor: '#2B2A2C',
+      bubbleMaxWidth: 1200,          // full-width replies
+      bubbleNubSize: 0,
+
+      // User (question) bubbles — iBeauti theme color
+      bubbleFromUserBackground: '#A65E66',
+      bubbleFromUserBorderColor: '#A65E66',
+      bubbleFromUserBorderRadius: 18,
+      bubbleFromUserBorderWidth: 0,
+      bubbleFromUserTextColor: '#FFFFFF',
+      bubbleFromUserNubSize: 0,
+
+      // Avatars
+      botAvatarInitials: 'iB',
+      botAvatarBackgroundColor: '#E8C8CC',
+      avatarSize: 34,
+      showAvatarInGroup: 'status',
+
+      // Send box
+      hideUploadButton: false,
+      sendBoxBackground: '#FFFFFF',
+      sendBoxTextColor: '#2B2A2C',
+      sendBoxButtonColor: '#A65E66',
+      sendBoxButtonColorOnHover: '#8A4A52',
+      sendBoxPlaceholderColor: '#9A8F93',
+      sendBoxBorderTop: '1px solid #EADCDE',
+      sendBoxHeight: 56,
+
+      // Suggested-action buttons from the agent
+      suggestedActionBackgroundColor: '#FFFFFF',
+      suggestedActionBorderColor: '#A65E66',
+      suggestedActionBorderRadius: 20,
+      suggestedActionBorderWidth: 1.5,
+      suggestedActionTextColor: '#A65E66',
+      suggestedActionBackgroundColorOnHover: '#F6ECED',
+
+      timestampColor: '#9A8F93',
+      cardEmphasisBackgroundColor: '#F6ECED',
+      transcriptOverlayButtonBackground: '#A65E66'
+    };
+
+    /* ===== Connect ===== */
+    async function getDirectLine() {
+      const tokenURL = new URL(TOKEN_ENDPOINT);
+      const apiVersion = tokenURL.searchParams.get('api-version');
+
+      const regional = fetch(new URL(`/powervirtualagents/regionalchannelsettings?api-version=${apiVersion}`, tokenURL))
+        .then(r => r.ok ? r.json() : null)
+        .then(j => j && j.channelUrlsById && j.channelUrlsById.directline)
+        .catch(() => null);
+
+      const tokenRes = await fetch(tokenURL);
+      if (!tokenRes.ok) throw new Error('Token endpoint returned ' + tokenRes.status);
+      const { token } = await tokenRes.json();
+      const directLineURL = await regional;
+
+      return directLineURL
+        ? window.WebChat.createDirectLine({ domain: new URL('v3/directline', directLineURL).toString(), token })
+        : window.WebChat.createDirectLine({ token });
+    }
+
+    function showFallback() {
+      const host = document.getElementById('webchat');
+      host.innerHTML = '<div class="iframe-clip"><iframe title="iBeauti Advisor" src="' + FALLBACK_IFRAME + '"></iframe></div>';
+      // Chips/ZIP can't post into the iframe — hide them in fallback mode
+      document.getElementById('chips').style.display = 'none';
+      document.getElementById('zipForm').style.display = 'none';
+    }
+
+    (async function init() {
+      try {
+        if (!window.WebChat) throw new Error('Web Chat library failed to load');
+        const directLine = await getDirectLine();
+
+        chatStore = window.WebChat.createStore({}, ({ dispatch }) => next => action => {
+          if (action.type === 'DIRECT_LINE/CONNECT_FULFILLED') {
+            // Triggers the agent's greeting topic
+            dispatch({
+              type: 'DIRECT_LINE/POST_ACTIVITY',
+              meta: { method: 'keyboard' },
+              payload: { activity: { channelData: { postBack: true }, name: 'startConversation', type: 'event' } }
+            });
+            // Send anything tapped before the connection finished
+            setTimeout(() => { while (pending.length) send(pending.shift()); }, 600);
+          }
+          return next(action);
+        });
+
+        const host = document.getElementById('webchat');
+        host.innerHTML = '';
+        window.WebChat.renderWebChat({
+          directLine,
+          store: chatStore,
+          styleOptions,
+          locale: 'en-US',
+          overrideLocalizedStrings: { TEXT_INPUT_PLACEHOLDER: 'Ask about products, shades or prices near you…' }
+        }, host);
+      } catch (err) {
+        console.warn('[iBeauti] Custom chat unavailable, using fallback:', err);
+        showFallback();
+      }
+    })();
+  </script>
+</body>
+</html>
